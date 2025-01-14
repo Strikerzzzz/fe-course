@@ -1,101 +1,261 @@
-import Image from "next/image";
+'use client';
 
-export default function Home() {
+import { useEffect, useState } from 'react';
+import { getQuestions, addQuestion, updateQuestion, deleteQuestion } from './services/questionApi';
+
+interface Question {
+  id: string;
+  type: 'multipleChoice' | 'fillInTheBlank';
+  content: string;
+  options?: { option: string; isCorrect: boolean }[];
+  correctAnswer?: string;
+  hint?: string;
+  explanation?: string;
+  difficulty: 'easy' | 'medium' | 'hard';
+  reference: {
+    id: string;
+    referenceType: 'exam' | 'quiz';
+  };
+}
+
+export default function QuestionPage() {
+  const [questions, setQuestions] = useState<Question[]>([]);
+  const [showPopup, setShowPopup] = useState(false);
+  const [popupMode, setPopupMode] = useState<'add' | 'edit'>('add');
+  const [currentQuestion, setCurrentQuestion] = useState<Partial<Question>>({});
+  const [deleteId, setDeleteId] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetchQuestions();
+  }, []);
+
+  const fetchQuestions = async () => {
+    const data = await getQuestions();
+    setQuestions(data);
+  };
+
+  const handleSaveQuestion = async () => {
+    if (!currentQuestion.content || !currentQuestion.type || !currentQuestion.difficulty) {
+      alert('Vui lòng nhập đầy đủ thông tin!');
+      return;
+    }
+
+    const questionPayload = {
+      type: currentQuestion.type,
+      content: currentQuestion.content,
+      options:
+        currentQuestion.type === 'multipleChoice'
+          ? currentQuestion.options || []
+          : undefined,
+      correctAnswer:
+        currentQuestion.type === 'fillInTheBlank'
+          ? currentQuestion.correctAnswer || ''
+          : undefined,
+      hint: currentQuestion.hint || '',
+      explanation: currentQuestion.explanation || '',
+      difficulty: currentQuestion.difficulty,
+      reference: {
+        id: '64b6245b8f1234567890abcd', // Thay bằng ID thực tế từ backend
+        referenceType: 'quiz', // Hoặc 'exam', tùy thuộc vào logic
+      },
+    };
+
+    if (popupMode === 'add') {
+      await addQuestion(questionPayload);
+    } else if (popupMode === 'edit' && currentQuestion.id) {
+      await updateQuestion(currentQuestion.id, questionPayload);
+    }
+
+    setShowPopup(false);
+    fetchQuestions();
+  };
+
+  const handleDeleteQuestion = async () => {
+    if (deleteId) {
+      await deleteQuestion(deleteId);
+      setDeleteId(null);
+      fetchQuestions();
+    }
+  };
+
   return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-8 row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-semibold">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li>Save and see your changes instantly.</li>
-        </ol>
+    <div className="p-8">
+      <h1 className="text-2xl mb-6">Danh sách câu hỏi</h1>
+      <table className="min-w-full table-auto border-collapse">
+        <thead>
+          <tr>
+            <th className="border px-4 py-2">Loại</th>
+            <th className="border px-4 py-2">Nội dung</th>
+            <th className="border px-4 py-2">Độ khó</th>
+            <th className="border px-4 py-2">Hành động</th>
+          </tr>
+        </thead>
+        <tbody>
+          {questions.map((question) => (
+            <tr key={question.id} className="hover:bg-gray-50">
+              <td className="border px-4 py-2">{question.type}</td>
+              <td className="border px-4 py-2">{question.content}</td>
+              <td className="border px-4 py-2">{question.difficulty}</td>
+              <td className="border px-4 py-2 flex gap-2 justify-center">
+                <button
+                  className="edit bg-blue-500 text-white px-4 py-2 rounded"
+                  onClick={() => {
+                    setPopupMode('edit');
+                    setCurrentQuestion(question);
+                    setShowPopup(true);
+                  }}
+                >
+                  Sửa
+                </button>
+                <button
+                  className="delete bg-red-500 text-white px-4 py-2 rounded"
+                  onClick={() => setDeleteId(question.id)}
+                >
+                  Xóa
+                </button>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
+      <button
+        className="add bg-green-500 text-white px-4 py-2 rounded mt-6"
+        onClick={() => {
+          setPopupMode('add');
+          setCurrentQuestion({ type: 'multipleChoice', difficulty: 'easy' });
+          setShowPopup(true);
+        }}
+      >
+        Thêm câu hỏi
+      </button>
+
+      {/* Popup Form */}
+      {showPopup && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+          <div className="bg-white p-6 rounded shadow-lg w-1/3">
+            <h2 className="text-xl mb-4">{popupMode === 'add' ? 'Thêm Câu Hỏi' : 'Sửa Câu Hỏi'}</h2>
+            <select
+              className="border rounded px-4 py-2 w-full mb-4"
+              value={currentQuestion.type || ''}
+              onChange={(e) => setCurrentQuestion({ ...currentQuestion, type: e.target.value })}
+            >
+              <option value="multipleChoice">Trắc nghiệm</option>
+              <option value="fillInTheBlank">Điền từ</option>
+            </select>
+            <input
+              className="border rounded px-4 py-2 w-full mb-4"
+              placeholder="Nội dung"
+              value={currentQuestion.content || ''}
+              onChange={(e) => setCurrentQuestion({ ...currentQuestion, content: e.target.value })}
             />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:min-w-44"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+            {currentQuestion.type === 'multipleChoice' && (
+              <div>
+                <h3 className="text-lg mb-2">Lựa chọn</h3>
+                {(currentQuestion.options || []).map((option, index) => (
+                  <div key={index} className="flex items-center gap-2 mb-2">
+                    <input
+                      className="border rounded px-2 py-1 flex-1"
+                      placeholder="Lựa chọn"
+                      value={option.option}
+                      onChange={(e) => {
+                        const newOptions = [...(currentQuestion.options || [])];
+                        newOptions[index].option = e.target.value;
+                        setCurrentQuestion({ ...currentQuestion, options: newOptions });
+                      }}
+                    />
+                    <input
+                      type="checkbox"
+                      checked={option.isCorrect}
+                      onChange={(e) => {
+                        const newOptions = [...(currentQuestion.options || [])];
+                        newOptions[index].isCorrect = e.target.checked;
+                        setCurrentQuestion({ ...currentQuestion, options: newOptions });
+                      }}
+                    />
+                  </div>
+                ))}
+                <button
+                  className="bg-blue-500 text-white px-4 py-2 rounded mt-2"
+                  onClick={() => {
+                    const newOptions = [...(currentQuestion.options || []), { option: '', isCorrect: false }];
+                    setCurrentQuestion({ ...currentQuestion, options: newOptions });
+                  }}
+                >
+                  Thêm lựa chọn
+                </button>
+              </div>
+            )}
+            {currentQuestion.type === 'fillInTheBlank' && (
+              <input
+                className="border rounded px-4 py-2 w-full mb-4"
+                placeholder="Câu trả lời đúng"
+                value={currentQuestion.correctAnswer || ''}
+                onChange={(e) => setCurrentQuestion({ ...currentQuestion, correctAnswer: e.target.value })}
+              />
+            )}
+            <input
+              className="border rounded px-4 py-2 w-full mb-4"
+              placeholder="Gợi ý"
+              value={currentQuestion.hint || ''}
+              onChange={(e) => setCurrentQuestion({ ...currentQuestion, hint: e.target.value })}
+            />
+            <input
+              className="border rounded px-4 py-2 w-full mb-4"
+              placeholder="Giải thích"
+              value={currentQuestion.explanation || ''}
+              onChange={(e) => setCurrentQuestion({ ...currentQuestion, explanation: e.target.value })}
+            />
+            <select
+              className="border rounded px-4 py-2 w-full mb-4"
+              value={currentQuestion.difficulty || ''}
+              onChange={(e) => setCurrentQuestion({ ...currentQuestion, difficulty: e.target.value })}
+            >
+              <option value="easy">Dễ</option>
+              <option value="medium">Trung bình</option>
+              <option value="hard">Khó</option>
+            </select>
+            <div className="flex justify-end gap-2">
+              <button
+                className="bg-gray-500 text-white px-4 py-2 rounded"
+                onClick={() => setShowPopup(false)}
+              >
+                Hủy
+              </button>
+              <button
+                className="bg-blue-500 text-white px-4 py-2 rounded"
+                onClick={handleSaveQuestion}
+              >
+                Lưu
+              </button>
+            </div>
+          </div>
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-6 flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+      )}
+
+      {/* Confirm Delete */}
+      {deleteId && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+          <div className="bg-white p-6 rounded shadow-lg w-1/3">
+            <h2 className="text-xl mb-4">Xóa Câu Hỏi</h2>
+            <p>Bạn có chắc chắn muốn xóa câu hỏi này?</p>
+            <div className="flex justify-end gap-2 mt-4">
+              <button
+                className="bg-gray-500 text-white px-4 py-2 rounded"
+                onClick={() => setDeleteId(null)}
+              >
+                Hủy
+              </button>
+              <button
+                className="bg-red-500 text-white px-4 py-2 rounded"
+                onClick={handleDeleteQuestion}
+              >
+                Xóa
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
