@@ -22,7 +22,7 @@ export default function QuestionPage() {
   const [questions, setQuestions] = useState<Question[]>([]);
   const [showPopup, setShowPopup] = useState(false);
   const [popupMode, setPopupMode] = useState<'add' | 'edit'>('add');
-  const [currentQuestion, setCurrentQuestion] = useState<Partial<Question>>({});
+  const [currentQuestion, setCurrentQuestion] = useState<Partial<Question>| any>({});
   const [deleteId, setDeleteId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -91,8 +91,8 @@ export default function QuestionPage() {
           </tr>
         </thead>
         <tbody>
-          {questions.map((question) => (
-            <tr key={question.id} className="hover:bg-gray-50">
+          {questions.map((question, index) => (
+            <tr key={index} className="hover:bg-gray-50">
               <td className="border px-4 py-2">{question.type}</td>
               <td className="border px-4 py-2">{question.content}</td>
               <td className="border px-4 py-2">{question.difficulty}</td>
@@ -152,7 +152,7 @@ export default function QuestionPage() {
             {currentQuestion.type === 'multipleChoice' && (
               <div>
                 <h3 className="text-lg mb-2">Lựa chọn</h3>
-                {(currentQuestion.options || []).map((option, index) => (
+                {(currentQuestion.options || []).map((option:Partial<Question>|any, index:number) => (
                   <div key={index} className="flex items-center gap-2 mb-2">
                     <input
                       className="border rounded px-2 py-1 flex-1"

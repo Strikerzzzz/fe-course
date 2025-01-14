@@ -5,14 +5,14 @@ export const getQuestions = async () => {
   return response.data;
 };
 
-export const addQuestion = async (question: { title: string; content: string }) => {
+export const addQuestion = async (question: { title: string; content: string }|any) => {
   const response = await apiClient.post('/question', question);
   return response.data;
 };
 
 export const updateQuestion = async (
   id: string,
-  question: { title: string; content: string }
+  question: { title: string; content: string }|any
 ) => {
   const response = await apiClient.patch(`/question/${id}`, question);
   return response.data;
