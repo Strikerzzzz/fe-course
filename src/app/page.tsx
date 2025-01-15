@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { getQuestions, addQuestion, updateQuestion, deleteQuestion } from './services/questionApi';
 
 interface Question {
-  id: string;
+  _id: string;
   type: 'multipleChoice' | 'fillInTheBlank';
   content: string;
   options?: { option: string; isCorrect: boolean }[];
@@ -62,8 +62,8 @@ export default function QuestionPage() {
 
     if (popupMode === 'add') {
       await addQuestion(questionPayload);
-    } else if (popupMode === 'edit' && currentQuestion.id) {
-      await updateQuestion(currentQuestion.id, questionPayload);
+    } else if (popupMode === 'edit' && currentQuestion._id) {
+      await updateQuestion(currentQuestion._id, questionPayload);
     }
 
     setShowPopup(false);
@@ -109,7 +109,7 @@ export default function QuestionPage() {
                 </button>
                 <button
                   className="delete bg-red-500 text-white px-4 py-2 rounded"
-                  onClick={() => setDeleteId(question.id)}
+                  onClick={() => setDeleteId(question._id)}
                 >
                   Xóa
                 </button>
